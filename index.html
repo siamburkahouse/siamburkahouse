@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siam Burka House</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #f57224;
+            --primary-light: #fdf0e8;
+            --bg-body: #f4f4f4;
+            --text-dark: #212121;
+            --border-color: #e0e0e0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-body); color: var(--text-dark); padding-bottom: 60px; }
+
+        header { background-color: #fff; padding: 10px 12px; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 8px; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 18px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 6px; text-decoration: none; }
+        
+        .search-box { display: flex; align-items: center; background: #eff0f5; border-radius: 20px; padding: 6px 12px; }
+        .search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 13px; margin-left: 6px; }
+
+        .tab-view { display: none; }
+        .tab-view.active { display: block; }
+
+        .banner-container { width: 100%; height: 150px; position: relative; overflow: hidden; background: #e0e0e0; }
+        .banner-slide { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .banner-slide.active { display: block; }
+
+        .quick-icons { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; padding: 12px 5px; text-align: center; margin-bottom: 8px; }
+        .quick-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dark); cursor: pointer; }
+        .quick-item i { font-size: 18px; color: var(--primary); background: var(--primary-light); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        .section-header { background: #fff; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+        .section-title { font-size: 14px; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px; }
+        .product-card { background: #fff; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; }
+        .wishlist-btn { position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.8); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 14px; z-index: 5; }
+        .wishlist-btn.active { color: #ef4444; }
+
+        .product-img { width: 100%; height: 150px; object-fit: cover; background: #f0f0f0; }
+        .product-info { padding: 8px; display: flex; flex-direction: column; flex: 1; }
+        .product-title { font-size: 12px; color: #333; line-height: 1.3; height: 31px; overflow: hidden; margin-bottom: 4px; }
+        
+        .price-row { display: flex; align-items: baseline; gap: 4px; margin-top: auto; }
+        .price { font-size: 15px; font-weight: bold; color: var(--primary); }
+        .old-price { font-size: 10px; color: #9e9e9e; text-decoration: line-through; }
+
+        .btn-add-cart { width: 100%; background: var(--primary); color: #fff; border: none; padding: 6px; font-size: 11px; font-weight: bold; border-radius: 2px; margin-top: 6px; cursor: pointer; }
+
+        .category-container { display: flex; background: #fff; min-height: calc(100vh - 120px); }
+        .category-sidebar { width: 30%; background: #f7f7f7; border-right: 1px solid var(--border-color); }
+        .cat-menu-item { padding: 12px 8px; font-size: 11px; color: #555; text-align: center; border-bottom: 1px solid #eee; cursor: pointer; }
+        .cat-menu-item.active { background: #fff; color: var(--primary); font-weight: bold; border-left: 3px solid var(--primary); }
+        .category-content { width: 70%; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+
+        .cart-view { padding: 12px; }
+        .cart-card { background: #fff; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .cart-item-header { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
+        .cart-item-header img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+
+        .cart-controls { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+        .options-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .opt-btn { border: 1px solid var(--border-color); background: #fff; padding: 2px 8px; font-size: 11px; border-radius: 2px; cursor: pointer; }
+        .opt-btn.selected { border-color: var(--primary); color: var(--primary); font-weight: bold; }
+
+        .qty-box { display: flex; align-items: center; gap: 5px; }
+        .qty-btn { width: 22px; height: 22px; border: 1px solid var(--border-color); background: #eee; font-weight: bold; cursor: pointer; }
+        .qty-val { width: 30px; text-align: center; border: 1px solid var(--border-color); padding: 2px; font-size: 11px; }
+
+        .notice-box { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 10px; font-size: 11px; border-radius: 4px; margin: 10px 0; line-height: 1.4; }
+        .shipping-box { background: #fff; padding: 12px; border-radius: 4px; margin-bottom: 10px; }
+        .shipping-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+
+        .payment-options { background: #fff; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-size: 12px; }
+        .payment-item { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
+
+        .btn-order-red { width: 100%; background: #dc2626; color: #fff; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 2px; cursor: pointer; text-align: center; }
+
+        .account-header { background: linear-gradient(135deg, #f57224, #ff9248); color: #fff; padding: 20px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .login-btn-top { background: #fff; color: var(--primary); border: none; padding: 6px 14px; font-size: 12px; font-weight: bold; border-radius: 2px; cursor: pointer; }
+
+        .account-menu { background: #fff; margin-top: 8px; }
+        .account-menu-item { padding: 14px 15px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; font-size: 13px; cursor: pointer; }
+        .account-menu-item div { display: flex; align-items: center; gap: 10px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-box { background: #fff; width: 90%; max-width: 400px; border-radius: 6px; padding: 15px; max-height: 85vh; overflow-y: auto; position: relative; }
+        .modal-close { position: absolute; top: 10px; right: 12px; font-size: 18px; cursor: pointer; color: #888; }
+
+        .form-input { width: 100%; padding: 9px; margin: 5px 0 10px 0; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; background: #fff; }
+        .form-select-trigger { width: 100%; padding: 9px; margin: 5px 0 10px 0; border: 1px solid var(--border-color); border-radius: 4px; font-size: 12px; background: #fff; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #555; }
+
+        .select-list-modal { max-height: 250px; overflow-y: auto; margin-top: 8px; border: 1px solid #eee; border-radius: 4px; }
+        .select-item { padding: 10px; font-size: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .select-item:hover { background: var(--primary-light); color: var(--primary); }
+
+        .order-history-card { background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #eee; }
+        .order-item-detail { display: flex; gap: 10px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e0e0e0; }
+        .order-item-detail img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+
+        .pay-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #eee; color: #444; display: inline-block; margin-top: 4px; }
+        .pay-number-box { background: #fdf0e8; border: 1px solid var(--primary); padding: 10px; border-radius: 4px; font-size: 12px; margin: 8px 0; }
+
+        #toast { visibility: hidden; min-width: 200px; background-color: rgba(33, 33, 33, 0.9); color: #fff; text-align: center; border-radius: 25px; padding: 8px 18px; position: fixed; z-index: 3000; left: 50%; bottom: 75px; transform: translateX(-50%); font-size: 11px; font-weight: 500; }
+        #toast.show { visibility: visible; animation: slideUpFade 0.3s forwards, fadeOut 0.3s 2.2s forwards; }
+
+        @keyframes slideUpFade { from { bottom: 50px; opacity: 0; } to { bottom: 75px; opacity: 1; } }
+        @keyframes fadeOut { from { bottom: 75px; opacity: 1; } to { bottom: 50px; opacity: 0; } }
+
+        .badge-status { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+        .status-pending { background: #fef08a; color: #854d0e; }
+        .status-delivered { background: #93c5fd; color: #1e40af; }
+        .status-rejected { background: #fecaca; color: #dc2626; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; display: flex; justify-space: around; padding: 8px 0; border-top: 1px solid var(--border-color); z-index: 1000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #757575; font-size: 10px; cursor: pointer; text-decoration: none; width: 25%; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-top">
+            <a href="#" class="logo"><i class="fa-solid fa-kaaba"></i> Siam Burka House</a>
+        </div>
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass" style="color:#9e9e9e; font-size:12px;"></i>
+            <input type="text" placeholder="Search in Siam Burka House..." onkeyup="searchProducts(this.value)">
+        </div>
+    </header>
+
+    <!-- HOME TAB -->
+    <div id="tab-home" class="tab-view active">
+        <div class="banner-container" id="bannerSlider"></div>
+
+        <div class="quick-icons">
+            <div class="quick-item" onclick="filterByTag('premium')"><i class="fa-solid fa-gem"></i><span>Premium</span></div>
+            <div class="quick-item" onclick="filterByTag('offer')"><i class="fa-solid fa-percent"></i><span>Offers</span></div>
+            <div class="quick-item" onclick="filterByTag('fast')"><i class="fa-solid fa-truck-fast"></i><span>Fast Delivery</span></div>
+            <div class="quick-item" onclick="filterByTag('bestseller')"><i class="fa-solid fa-star"></i><span>Best Seller</span></div>
+        </div>
+
+        <div class="section-header">
+            <div class="section-title" id="homeSectionTitle"><i class="fa-solid fa-bolt"></i> Flash Sale</div>
+            <span style="font-size: 11px; color: #757575; cursor:pointer;" onclick="renderProducts(products)">SHOW ALL &gt;</span>
+        </div>
+
+        <div class="product-grid" id="homeProducts"></div>
+    </div>
+
+    <!-- CATEGORIES TAB -->
+    <div id="tab-categories" class="tab-view">
+        <div class="category-container">
+            <div class="category-sidebar">
+                <div class="cat-menu-item active" onclick="selectCat('burka', this)">Burka Collection</div>
+                <div class="cat-menu-item" onclick="selectCat('hijab', this)">Hijab & Abaya</div>
+                <div class="cat-menu-item" onclick="selectCat('niqab', this)">Niqab & Caps</div>
+                <div class="cat-menu-item" onclick="selectCat('accessories', this)">Accessories</div>
+            </div>
+            <div class="category-content" id="catContent"></div>
+        </div>
+    </div>
+
+    <!-- CART TAB -->
+    <div id="tab-cart" class="tab-view">
+        <div class="cart-view">
+            <h3 style="font-size: 15px; margin-bottom: 10px;">Shopping Cart</h3>
+            <div id="cartList"></div>
+
+            <div class="notice-box">
+                <strong>নোটিশ:</strong> ডেলিভারিম্যান থাকা অবস্থায় পণ্য চেক করে নিবেন। পণ্য রিটার্ন দিতে হলে ডেলিভারিম্যানের কাছেই রিটার্ন করে দিবেন, তবে ডেলিভারি চার্জ প্রযোজ্য।
+            </div>
+
+            <div class="shipping-box">
+                <div class="shipping-title"><i class="fa-solid fa-location-dot"></i> ডেলিভারি ঠিকানা দিন</div>
+                
+                <label style="font-size:11px; color:#555;">আপনার নাম:</label>
+                <input type="text" id="custName" class="form-input" placeholder="আপনার পুরো নাম লিখুন">
+
+                <label style="font-size:11px; color:#555;">ফোন নম্বর:</label>
+                <input type="tel" id="custPhone" class="form-input" placeholder="017XXXXXXXX">
+
+                <label style="font-size:11px; color:#555;">বিভাগ নির্বাচন করুন:</label>
+                <button type="button" class="form-select-trigger" onclick="openSearchModal('division')">
+                    <span id="selectedDivision">বিভাগ নির্বাচন করুন</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+
+                <label style="font-size:11px; color:#555;">জেলা নির্বাচন করুন:</label>
+                <button type="button" class="form-select-trigger" onclick="openSearchModal('district')">
+                    <span id="selectedDistrict">জেলা নির্বাচন করুন</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+
+                <label style="font-size:11px; color:#555;">থানা নির্বাচন করুন:</label>
+                <input type="text" id="custThana" class="form-input" placeholder="আপনার থানার নাম লিখুন">
+
+                <label style="font-size:11px; color:#555;">সম্পূর্ণ ঠিকানা লিখুন:</label>
+                <input type="text" id="custAddress" class="form-input" placeholder="বাসা নম্বর, রোড নম্বর, এলাকা">
+            </div>
+
+            <div class="payment-options">
+                <strong style="display:block; margin-bottom: 6px;">Payment Method:</strong>
+                <label class="payment-item">
+                    <input type="radio" name="payMethod" value="COD" checked> Cash on Delivery (ক্যাশ অন ডেলিভারি)
+                </label>
+                <label class="payment-item">
+                    <input type="radio" name="payMethod" value="Advance"> Advance Payment (অগ্রিম পেমেন্ট)
+                </label>
+            </div>
+
+            <div style="background: #fff; padding: 12px; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px;">
+                    <span>Total Amount:</span>
+                    <span style="color: var(--primary);">৳<span id="cartTotal">0</span></span>
+                </div>
+                <button class="btn-order-red" onclick="handleOrderButtonClick()">Order Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACCOUNT TAB -->
+    <div id="tab-account" class="tab-view">
+        <div class="account-header">
+            <div>
+                <strong id="userDisplayName">Hello, Welcome!</strong>
+                <div style="font-size: 11px;" id="userDisplaySub">Login to manage your orders</div>
+            </div>
+            <button class="login-btn-top" id="authBtn" onclick="openAuthModal()">LOGIN / SIGNUP</button>
+        </div>
+        <div class="account-menu">
+            <div class="account-menu-item" onclick="openOrdersModal()">
+                <div><i class="fa-solid fa-box" style="color:#f57224;"></i> My Orders</div>
+                <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+            </div>
+            <div class="account-menu-item" onclick="openWishlistModal()">
+                <div><i class="fa-solid fa-heart" style="color:#f57224;"></i> Wishlist & Followed Stores</div>
+                <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+            </div>
+            <div class="account-menu-item" onclick="openPoliciesModal()">
+                <div><i class="fa-solid fa-file-contract" style="color:#f57224;"></i> Policies</div>
+                <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+            </div>
+            <div class="account-menu-item" onclick="openDynamicLink('telegram')">
+                <div><i class="fa-solid fa-comment-dots" style="color:#f57224;"></i> Feedback (Telegram)</div>
+                <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+            </div>
+            <div class="account-menu-item" onclick="openDynamicLink('whatsapp')">
+                <div><i class="fa-solid fa-headset" style="color:#f57224;"></i> Help & Chat with us (WhatsApp)</div>
+                <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('home', this)"><i class="fa-solid fa-house"></i><span>Home</span></div>
+        <div class="nav-item" onclick="switchTab('categories', this)"><i class="fa-solid fa-list-ul"></i><span>Categories</span></div>
+        <div class="nav-item" onclick="switchTab('cart', this)"><i class="fa-solid fa-cart-shopping"></i><span>Cart</span></div>
+        <div class="nav-item" onclick="switchTab('account', this)"><i class="fa-solid fa-user"></i><span>Account</span></div>
+    </nav>
+
+    <!-- SEARCHABLE SELECT MODAL -->
+    <div class="modal-overlay" id="searchSelectModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('searchSelectModal')">&times;</span>
+            <h3 style="font-size:14px; margin-bottom:8px;" id="searchModalTitle">বিভাগ নির্বাচন করুন</h3>
+            <input type="text" id="selectSearchInput" class="form-input" placeholder="খুঁজুন..." onkeyup="filterSelectList(this.value)">
+            <div class="select-list-modal" id="selectListContainer"></div>
+        </div>
+    </div>
+
+    <!-- PRODUCT DETAIL MODAL -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('productModal')">&times;</span>
+            <div id="modalProductDetails"></div>
+        </div>
+    </div>
+
+    <!-- ADVANCE PAYMENT MODAL -->
+    <div class="modal-overlay" id="advancePayModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('advancePayModal')">&times;</span>
+            <h3 style="font-size:15px; color:var(--primary); margin-bottom:10px;">Advance Payment Details</h3>
+            <div class="pay-number-box">
+                <p><strong>bKash Personal:</strong> 01700000000</p>
+                <p><strong>Nagad Personal:</strong> 01800000000</p>
+            </div>
+            <div style="font-size:11px; color:#555; margin-bottom:10px;">* উপরের নম্বরে টাকা সেন্ড মানি করে নিচের তথ্য দিন।</div>
+
+            <label style="font-size:11px; color:#333;">অ্যামাউন্ট (Amount):</label>
+            <input type="number" id="payAmount" class="form-input" placeholder="e.g. 1850">
+
+            <label style="font-size:11px; color:#333;">বিকাশ/নগদ নম্বর (Last 4 Digits):</label>
+            <input type="text" id="payLastDigits" maxlength="4" class="form-input" placeholder="e.g. 4321">
+
+            <label style="font-size:11px; color:#333;">ট্রানজেকশন আইডি (TrxID):</label>
+            <input type="text" id="payTrxId" class="form-input" placeholder="e.g. 9J8A7K21">
+
+            <button class="btn-order-red" style="margin-top:12px;" onclick="confirmAdvanceOrder()">Confirm Order Now</button>
+        </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('authModal')">&times;</span>
+            <div style="display:flex; gap:10px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:8px;">
+                <strong id="tabLoginBtn" style="color:var(--primary); cursor:pointer;" onclick="switchAuthForm('login')">Login</strong>
+                <span>|</span>
+                <strong id="tabSignupBtn" style="color:#888; cursor:pointer;" onclick="switchAuthForm('signup')">Sign Up</strong>
+            </div>
+
+            <div id="loginForm">
+                <input type="text" id="loginId" class="form-input" placeholder="Gmail / Phone">
+                <input type="password" id="loginPass" class="form-input" placeholder="Password">
+                <button class="btn-order-red" style="margin-top:10px;" onclick="handleLogin()">Login</button>
+            </div>
+
+            <div id="signupForm" style="display:none;">
+                <input type="email" id="signEmail" class="form-input" placeholder="Gmail">
+                <input type="text" id="signPhone" class="form-input" placeholder="Phone Number">
+                <input type="password" id="signPass" class="form-input" placeholder="Password">
+                <input type="password" id="signConfirmPass" class="form-input" placeholder="Confirm Password">
+                <button class="btn-order-red" style="margin-top:10px;" onclick="handleSignup()">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MY ORDERS MODAL -->
+    <div class="modal-overlay" id="ordersModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('ordersModal')">&times;</span>
+            <h3 style="font-size:15px; margin-bottom:10px;">My Orders History</h3>
+            <div id="ordersList"></div>
+        </div>
+    </div>
+
+    <!-- WISHLIST MODAL -->
+    <div class="modal-overlay" id="wishlistModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('wishlistModal')">&times;</span>
+            <h3 style="font-size:15px; margin-bottom:10px;">Saved Wishlist</h3>
+            <div id="wishlistContainer" class="product-grid" style="padding:0;"></div>
+        </div>
+    </div>
+
+    <!-- POLICIES MODAL -->
+    <div class="modal-overlay" id="policiesModal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('policiesModal')">&times;</span>
+            <h3 style="font-size:15px; margin-bottom:10px;">Terms & Conditions</h3>
+            <p style="font-size:12px; line-height:1.5; color:#555;">
+                ১. Siam Burka House থেকে পণ্য ক্রয়ের পর ডেলিভারিম্যানের সামনে পণ্য খুলে চেক করে নিতে হবে।<br>
+                ২. কোনো ত্রুটি থাকলে ডেলিভারিম্যানের নিকট তৎক্ষণাৎ ফেরত দিন।<br>
+                ৩. রিটার্নের ক্ষেত্রে ডেলিভারি চার্জ ফেরতযোগ্য নয়।
+            </p>
+        </div>
+    </div>
+
+    <div id="toast">Item added to cart</div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAWYEeSUu1ONyFpvnNiP4yXJGgXOTPykeQ",
+            authDomain: "siam-burka-house.firebaseapp.com",
+            databaseURL: "https://siam-burka-house-default-rtdb.firebaseio.com",
+            projectId: "siam-burka-house",
+            storageBucket: "siam-burka-house.firebasestorage.app",
+            messagingSenderId: "743205845405",
+            appId: "1:743205845405:web:693dba7def949c2631d774"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let banners = [];
+        let products = [];
+        let dynamicLinks = { telegram: 'https://t.me/example', whatsapp: 'https://wa.me/8801700000000' };
+
+        const divisionsList = ["ঢাকা", "চট্টগ্রাম", "রাজশাহী", "খুলনা", "বরিশাল", "সিলেট", "রংপুর", "ময়মনসিংহ"];
+        const districtsList = [
+            "ঢাকা", "গাজীপুর", "নারায়ণগঞ্জ", "টাঙ্গাইল", "কিশোরগঞ্জ", "মানিকগঞ্জ", "মুন্সীগঞ্জ", "নরসিংদী", "ফরিদপুর", "মাদারীপুর", "রাজবাড়ী", "শরীয়তপুর", "গোপালগঞ্জ",
+            "চট্টগ্রাম", "কক্সবাজার", "কুমিল্লা", "ফেনী", "ব্রাহ্মণবাড়িয়া", "নোয়াখালী", "চাঁদপুর", "লক্ষ্মীপুর", "রাঙ্গামাটি", "বান্দরবান", "খাগড়াছড়ি",
+            "সিলেট", "মৌলভীবাজার", "হবিগঞ্জ", "সুনামগঞ্জ",
+            "রাজশাহী", "বগুড়া", "পাবনা", "সিরাজগঞ্জ", "নাটোর", "নওগাঁ", "চাঁপাইনবাবগঞ্জ", "জয়পুরহাট",
+            "খুলনা", "যশোর", "কুষ্টিয়া", "সাতক্ষীরা", "বাগেরহাট", "ঝিনাইদহ", "চুয়াডাঙ্গা", "মেহেরপুর", "নড়াইল", "মাগুরা",
+            "বরিশাল", "পটুয়াখালী", "ভোলা", "পিরোজপুর", "বরগুনা", "ঝালকাঠি",
+            "রংপুর", "দিনাজপুর", "গাইবান্ধা", "কুড়িগ্রাম", "লালমনিরহাট", "নীলফামারী", "পঞ্চগড়", "ঠাকুরগাঁও",
+            "ময়মনসিংহ", "জামালপুর", "শেরপুর", "নেত্রকোণা"
+        ];
+
+        let activeSelectMode = ''; 
+        let selectedDivisionVal = '';
+        let selectedDistrictVal = '';
+
+        let currentUser = JSON.parse(localStorage.getItem('siam_user')) || null;
+        let cart = [];
+        let wishlist = JSON.parse(localStorage.getItem('siam_wishlist')) || [];
+        let orders = [];
+        let slideIndex = 0;
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 2500);
+        }
+
+        // REALTIME LISTENERS
+        function listenToCloudData() {
+            db.ref('banners').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    banners = Object.values(data);
+                    renderBanners();
+                }
+            });
+
+            db.ref('products').on('value', (snapshot) => {
+                const data = snapshot.val();
+                products = [];
+                if (data) {
+                    Object.keys(data).forEach(key => products.push(data[key]));
+                    renderProducts(products);
+                }
+            });
+
+            db.ref('settings/links').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    if (data.telegram) dynamicLinks.telegram = data.telegram;
+                    if (data.whatsapp) dynamicLinks.whatsapp = data.whatsapp;
+                }
+            });
+        }
+
+        function openDynamicLink(type) {
+            if (type === 'telegram') window.open(dynamicLinks.telegram, '_blank');
+            if (type === 'whatsapp') window.open(dynamicLinks.whatsapp, '_blank');
+        }
+
+        function openSearchModal(type) {
+            activeSelectMode = type;
+            document.getElementById('selectSearchInput').value = '';
+            document.getElementById('searchModalTitle').innerText = type === 'division' ? 'বিভাগ নির্বাচন করুন' : 'জেলা নির্বাচন করুন';
+            renderSelectList(type === 'division' ? divisionsList : districtsList);
+            document.getElementById('searchSelectModal').style.display = 'flex';
+        }
+
+        function renderSelectList(items) {
+            document.getElementById('selectListContainer').innerHTML = items.map(item => `
+                <div class="select-item" onclick="selectLocationItem('${item}')">${item}</div>
+            `).join('');
+        }
+
+        function filterSelectList(query) {
+            const sourceList = activeSelectMode === 'division' ? divisionsList : districtsList;
+            renderSelectList(sourceList.filter(i => i.toLowerCase().includes(query.toLowerCase())));
+        }
+
+        function selectLocationItem(item) {
+            if (activeSelectMode === 'division') {
+                selectedDivisionVal = item;
+                document.getElementById('selectedDivision').innerText = item;
+            } else {
+                selectedDistrictVal = item;
+                document.getElementById('selectedDistrict').innerText = item;
+            }
+            closeModal('searchSelectModal');
+        }
+
+        function listenToOrders() {
+            if (!currentUser) return;
+            db.ref('orders').on('value', (snapshot) => {
+                const data = snapshot.val();
+                orders = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        if (data[key].userId === currentUser.id) {
+                            orders.unshift(data[key]);
+                        }
+                    });
+                }
+            });
+        }
+
+        function renderBanners() {
+            const container = document.getElementById('bannerSlider');
+            if(banners.length === 0) return;
+            container.innerHTML = banners.map((b, i) => `
+                <img src="${b}" class="banner-slide ${i === 0 ? 'active' : ''}">
+            `).join('');
+        }
+
+        setInterval(() => {
+            const slides = document.querySelectorAll('.banner-slide');
+            if (slides.length <= 1) return;
+            slides[slideIndex].classList.remove('active');
+            slideIndex = (slideIndex + 1) % slides.length;
+            slides[slideIndex].classList.add('active');
+        }, 3000);
+
+        function renderProducts(items, containerId = 'homeProducts') {
+            const grid = document.getElementById(containerId);
+            if(items.length === 0) {
+                grid.innerHTML = `<p style="grid-column: span 2; text-align:center; font-size:12px; color:#888; padding:20px;">No products available right now.</p>`;
+                return;
+            }
+            grid.innerHTML = items.map(p => {
+                const isWished = wishlist.includes(p.id);
+                return `
+                    <div class="product-card">
+                        <div class="wishlist-btn ${isWished ? 'active' : ''}" onclick="toggleWishlist(${p.id}, event)">
+                            <i class="fa-solid fa-heart"></i>
+                        </div>
+                        <img src="${p.img}" class="product-img" onclick="openProductModal(${p.id})">
+                        <div class="product-info" onclick="openProductModal(${p.id})">
+                            <div class="product-title">${p.name}</div>
+                            <div class="price-row">
+                                <span class="price">৳${p.price}</span>
+                                <span class="old-price">৳${p.oldPrice}</span>
+                            </div>
+                            <button class="btn-add-cart" onclick="addToCart(${p.id}, event)">ADD TO CART</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterByTag(tag) {
+            const filtered = products.filter(p => p.tags && p.tags.includes(tag));
+            document.getElementById('homeSectionTitle').innerHTML = `<i class="fa-solid fa-filter"></i> ${tag.toUpperCase()} PRODUCTS`;
+            renderProducts(filtered);
+        }
+
+        function openProductModal(id) {
+            const p = products.find(item => item.id === id);
+            if (!p) return;
+
+            document.getElementById('modalProductDetails').innerHTML = `
+                <img src="${p.img}" style="width:100%; height:220px; object-fit:cover; border-radius:4px; margin-bottom:10px;">
+                <h3 style="font-size:14px; margin-bottom:6px;">${p.name}</h3>
+                <div style="font-size:16px; color:var(--primary); font-weight:bold; margin-bottom:8px;">৳${p.price} <span style="font-size:11px; color:#999; text-decoration:line-through;">৳${p.oldPrice}</span></div>
+                <p style="font-size:12px; color:#555; margin-bottom:15px; line-height:1.4;">${p.desc || 'High quality comfortable fabric designed for daily and occasion wear.'}</p>
+                <button class="btn-add-cart" style="padding:10px; font-size:13px;" onclick="addToCart(${p.id}); closeModal('productModal');">ADD TO CART</button>
+            `;
+            document.getElementById('productModal').style.display = 'flex';
+        }
+
+        function toggleWishlist(id, event) {
+            if(event) event.stopPropagation();
+            if (wishlist.includes(id)) {
+                wishlist = wishlist.filter(wId => wId !== id);
+                showToast("Removed from Wishlist");
+            } else {
+                wishlist.push(id);
+                showToast("Added to Wishlist");
+            }
+            localStorage.setItem('siam_wishlist', JSON.stringify(wishlist));
+            renderProducts(products);
+        }
+
+        function addToCart(id, event) {
+            if(event) event.stopPropagation();
+            const prod = products.find(p => p.id === id);
+            cart.push({ ...prod, size: 'M', color: 'Black', qty: 1 });
+            updateCart();
+            showToast("Item added to cart");
+        }
+
+        function updateCart() {
+            const list = document.getElementById('cartList');
+            let total = 0;
+
+            if(cart.length === 0) {
+                list.innerHTML = `<p style="text-align:center; font-size:12px; color:#888; padding:20px;">Your cart is empty.</p>`;
+                document.getElementById('cartTotal').innerText = '0';
+                return;
+            }
+
+            list.innerHTML = cart.map((item, index) => {
+                total += item.price * item.qty;
+                return `
+                    <div class="cart-card">
+                        <div class="cart-item-header">
+                            <img src="${item.img}" onclick="openProductModal(${item.id})">
+                            <div style="flex:1;" onclick="openProductModal(${item.id})">
+                                <div style="font-size:12px; font-weight:bold;">${item.name}</div>
+                                <div style="font-size:12px; color:var(--primary); font-weight:bold;">৳${item.price}</div>
+                            </div>
+                            <i class="fa-solid fa-trash" style="color:#ef4444; cursor:pointer;" onclick="removeFromCart(${index})"></i>
+                        </div>
+                        <div class="cart-controls">
+                            <div class="options-group">
+                                <span>Size:</span>
+                                ${['M','L','XL','XXL'].map(s => `<button class="opt-btn ${item.size === s ? 'selected' : ''}" onclick="setCartOption(${index}, 'size', '${s}')">${s}</button>`).join('')}
+                            </div>
+                            <div class="options-group">
+                                <span>Color:</span>
+                                ${['Black','Maroon','Navy'].map(c => `<button class="opt-btn ${item.color === c ? 'selected' : ''}" onclick="setCartOption(${index}, 'color', '${c}')">${c}</button>`).join('')}
+                            </div>
+                            <div class="options-group" style="margin-top:4px;">
+                                <span>Quantity:</span>
+                                <div class="qty-box">
+                                    <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
+                                    <input type="text" class="qty-val" value="${item.qty}" readonly>
+                                    <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('cartTotal').innerText = total;
+        }
+
+        function setCartOption(index, key, val) {
+            cart[index][key] = val;
+            updateCart();
+        }
+
+        function changeQty(index, delta) {
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) cart[index].qty = 1;
+            updateCart();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCart();
+            showToast("Item removed from cart");
+        }
+
+        function handleOrderButtonClick() {
+            if (!currentUser) {
+                showToast("লগইন অথবা সাইন আপ করুন");
+                openAuthModal();
+                return;
+            }
+            if (cart.length === 0) {
+                showToast("Cart is empty!");
+                return;
+            }
+
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const thana = document.getElementById('custThana').value.trim();
+            const address = document.getElementById('custAddress').value.trim();
+
+            if (!name) { showToast("আপনার নাম প্রদান করুন"); return; }
+            if (!phone) { showToast("ফোন নম্বর প্রদান করুন"); return; }
+            if (!selectedDivisionVal) { showToast("বিভাগ নির্বাচন করুন"); return; }
+            if (!selectedDistrictVal) { showToast("জেলা নির্বাচন করুন"); return; }
+            if (!thana) { showToast("থানার নাম প্রদান করুন"); return; }
+            if (!address) { showToast("সম্পূর্ণ ঠিকানা প্রদান করুন"); return; }
+
+            const selectedPayMode = document.querySelector('input[name="payMethod"]:checked').value;
+
+            if (selectedPayMode === 'Advance') {
+                const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+                document.getElementById('payAmount').value = total;
+                document.getElementById('advancePayModal').style.display = 'flex';
+            } else {
+                executeOrder('Cash on Delivery');
+            }
+        }
+
+        function confirmAdvanceOrder() {
+            const amt = document.getElementById('payAmount').value.trim();
+            const digits = document.getElementById('payLastDigits').value.trim();
+            const trx = document.getElementById('payTrxId').value.trim();
+
+            if (!amt || !digits || !trx) { showToast("সকল পেমেন্ট ফিল্ড পূরণ করুন"); return; }
+            if (digits.length !== 4) { showToast("নম্বরের লাস্ট ৪ ডিজিট দিন"); return; }
+
+            closeModal('advancePayModal');
+            executeOrder('Advance Payment (bKash/Nagad)', { amt, digits, trx });
+        }
+
+        function executeOrder(payType, payDetails = null) {
+            const orderId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+            const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            const shippingInfo = {
+                name: document.getElementById('custName').value.trim(),
+                phone: document.getElementById('custPhone').value.trim(),
+                division: selectedDivisionVal,
+                district: selectedDistrictVal,
+                thana: document.getElementById('custThana').value.trim(),
+                address: document.getElementById('custAddress').value.trim()
+            };
+            
+            const newOrder = {
+                id: orderId,
+                userId: currentUser.id,
+                shippingInfo: shippingInfo,
+                date: new Date().toISOString().split('T')[0],
+                total: total,
+                status: 'Pending',
+                paymentType: payType,
+                paymentDetails: payDetails,
+                items: cart.map(c => ({
+                    name: c.name,
+                    img: c.img,
+                    size: c.size,
+                    color: c.color,
+                    qty: c.qty,
+                    price: c.price
+                }))
+            };
+
+            db.ref('orders/' + orderId).set(newOrder).then(() => {
+                cart = [];
+                updateCart();
+                showToast(`Order Placed! ID: #${orderId}`);
+            }).catch((err) => showToast("Order error: " + err.message));
+        }
+
+        function selectCat(cat, el) {
+            document.querySelectorAll('.cat-menu-item').forEach(m => m.classList.remove('active'));
+            if(el) el.classList.add('active');
+            renderProducts(products.filter(p => p.category === cat), 'catContent');
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+        function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
+
+        function switchAuthForm(type) {
+            if (type === 'login') {
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('signupForm').style.display = 'none';
+                document.getElementById('tabLoginBtn').style.color = 'var(--primary)';
+                document.getElementById('tabSignupBtn').style.color = '#888';
+            } else {
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('signupForm').style.display = 'block';
+                document.getElementById('tabLoginBtn').style.color = '#888';
+                document.getElementById('tabSignupBtn').style.color = 'var(--primary)';
+            }
+        }
+
+        function handleLogin() {
+            const id = document.getElementById('loginId').value.trim();
+            if (!id) { showToast("Enter Email or Phone"); return; }
+            currentUser = { id: id };
+            localStorage.setItem('siam_user', JSON.stringify(currentUser));
+            
+            // Save/Update user to Firebase
+            const cleanKey = id.replace(/[.#$\[\]]/g, "_");
+            db.ref('users/' + cleanKey).set({ id: id, lastLogin: new Date().toISOString() });
+
+            updateUserUI();
+            listenToOrders();
+            closeModal('authModal');
+            showToast("Logged in successfully!");
+        }
+
+        function handleSignup() {
+            const email = document.getElementById('signEmail').value.trim();
+            const pass = document.getElementById('signPass').value.trim();
+            const confirm = document.getElementById('signConfirmPass').value.trim();
+
+            if (!email || !pass) { showToast("Please fill all fields"); return; }
+            if (pass !== confirm) { showToast("Passwords do not match"); return; }
+
+            currentUser = { id: email };
+            localStorage.setItem('siam_user', JSON.stringify(currentUser));
+
+            // Save new registered user
+            const cleanKey = email.replace(/[.#$\[\]]/g, "_");
+            db.ref('users/' + cleanKey).set({ id: email, created: new Date().toISOString() });
+
+            updateUserUI();
+            listenToOrders();
+            closeModal('authModal');
+            showToast("Signed up successfully!");
+        }
+
+        function updateUserUI() {
+            if (currentUser) {
+                document.getElementById('userDisplayName').innerText = "Member: " + currentUser.id;
+                document.getElementById('userDisplaySub').innerText = "Logged In";
+                document.getElementById('authBtn').innerText = "LOGOUT";
+                document.getElementById('authBtn').onclick = () => {
+                    localStorage.removeItem('siam_user');
+                    currentUser = null;
+                    orders = [];
+                    updateUserUI();
+                    showToast("Logged out");
+                };
+            } else {
+                document.getElementById('userDisplayName').innerText = "Hello, Welcome!";
+                document.getElementById('userDisplaySub').innerText = "Login to manage your orders";
+                document.getElementById('authBtn').innerText = "LOGIN / SIGNUP";
+                document.getElementById('authBtn').onclick = openAuthModal;
+            }
+        }
+
+        function openOrdersModal() {
+            const container = document.getElementById('ordersList');
+            if (orders.length === 0) {
+                container.innerHTML = `<p style="font-size:12px; color:#888; text-align:center; padding:15px;">আপনার কোনো অর্ডার হিস্টোরি নেই।</p>`;
+            } else {
+                container.innerHTML = orders.map(o => `
+                    <div class="order-history-card">
+                        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold;">
+                            <span>Order ID: #${o.id}</span>
+                            <span class="badge-status status-${o.status.toLowerCase()}">${o.status}</span>
+                        </div>
+                        <div class="pay-tag"><i class="fa-solid fa-credit-card"></i> ${o.paymentType}</div>
+
+                        ${o.items.map(item => `
+                            <div class="order-item-detail">
+                                <img src="${item.img}">
+                                <div style="flex:1;">
+                                    <div style="font-size:12px; font-weight:bold;">${item.name}</div>
+                                    <div style="font-size:10px; color:#666;">Size: ${item.size} | Color: ${item.color} \vert{} Qty:${item.qty}</div>
+                                    <div style="font-size:11px; color:var(--primary); font-weight:bold;">৳${item.price}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+
+                        ${o.rejectReason ? `<div style="font-size:11px; color:#dc2626; background:#fef2f2; padding:6px; border-radius:3px; margin-top:8px;"><b>রিজেক্ট করার কারণ:</b> ${o.rejectReason}</div>` : ''}
+
+                        <div style="font-size:12px; font-weight:bold; text-align:right; margin-top:8px; color:var(--primary);">Total: ৳${o.total}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('ordersModal').style.display = 'flex';
+        }
+
+        function openWishlistModal() {
+            renderProducts(products.filter(p => wishlist.includes(p.id)), 'wishlistContainer');
+            document.getElementById('wishlistModal').style.display = 'flex';
+        }
+
+        function openPoliciesModal() { document.getElementById('policiesModal').style.display = 'flex'; }
+
+        function switchTab(tab, el) {
+            document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            if(el) el.classList.add('active');
+            if(tab === 'categories') selectCat('burka', document.querySelector('.cat-menu-item'));
+        }
+
+        function searchProducts(query) {
+            renderProducts(products.filter(p => p.name.toLowerCase().includes(query.toLowerCase())));
+        }
+
+        // Init
+        listenToCloudData();
+        updateUserUI();
+        listenToOrders();
+    </script>
+</body>
+  </html>
